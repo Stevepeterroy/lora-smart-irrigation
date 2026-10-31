@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0a1628">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="description" content="Smart Irrigation System — Remote motor control and 3-phase power monitoring.">
+  <title>Smart Irrigation System</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="styles.css?v=12">
+</head>
+<body data-theme="light">
+
+  <!-- ════════════ USER SELECTION SCREEN ════════════ -->
+  <div class="auth-screen" id="screen-select-user">
+    <div class="auth-header">
+      <span class="auth-logo">🌾</span>
+      <h1 class="auth-title" data-i18n="select_user">Select User</h1>
+      <p class="auth-desc" data-i18n="select_user_desc">Choose your profile to continue</p>
+    </div>
+    <div class="user-list" id="user-list">
+      <div class="user-loading" data-i18n="loading_users">Loading users...</div>
+    </div>
+  </div>
+
+  <!-- ════════════ PIN ENTRY SCREEN ════════════ -->
+  <div class="auth-screen hidden" id="screen-pin">
+    <div class="auth-header">
+      <span class="auth-logo">🔒</span>
+      <h1 class="auth-title" id="pin-user-name"></h1>
+      <p class="auth-desc" data-i18n="enter_pin_desc">Enter your 4-digit PIN to continue</p>
+    </div>
+    <div class="pin-dots">
+      <span class="pin-dot" id="pin-dot-0"></span>
+      <span class="pin-dot" id="pin-dot-1"></span>
+      <span class="pin-dot" id="pin-dot-2"></span>
+      <span class="pin-dot" id="pin-dot-3"></span>
+    </div>
+    <div class="pin-error hidden" id="pin-error" data-i18n="wrong_pin">Wrong PIN. Try again.</div>
+    <div class="pin-pad">
+      <button class="pin-key" data-key="1">1</button><button class="pin-key" data-key="2">2</button><button class="pin-key" data-key="3">3</button>
+      <button class="pin-key" data-key="4">4</button><button class="pin-key" data-key="5">5</button><button class="pin-key" data-key="6">6</button>
+      <button class="pin-key" data-key="7">7</button><button class="pin-key" data-key="8">8</button><button class="pin-key" data-key="9">9</button>
+      <button class="pin-key pin-key-empty"></button><button class="pin-key" data-key="0">0</button><button class="pin-key pin-key-del" data-key="del">⌫</button>
+    </div>
+    <div class="pin-note" data-i18n="pin_reset_note">Contact admin to reset PIN</div>
+  </div>
+
+  <!-- ════════════ PIN ONBOARDING / SETUP ════════════ -->
+  <div class="auth-screen hidden" id="screen-pin-setup">
+    <div class="auth-header">
+      <span class="auth-logo">🛡️</span>
+      <h1 class="auth-title" data-i18n="secure_profile_title">Secure Your Profile?</h1>
+      <p class="auth-desc" data-i18n="secure_profile_desc" style="max-width:300px; margin:0 auto; line-height:1.4;">Would you like to protect your pump controls with a 4-digit PIN?</p>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:16px; padding: 20px;">
+      <button class="btn btn-primary btn-full" id="setup-pin-yes">YES, Set PIN</button>
+      <button class="btn btn-secondary btn-full" id="setup-pin-no" style="background:var(--bg-secondary); color:var(--text-secondary);">NO, Skip Security</button>
+    </div>
+  </div>
+
+  <!-- ════════════ PIN CREATE SCREEN ════════════ -->
+  <div class="auth-screen hidden" id="screen-pin-create">
+    <div class="auth-header">
+      <span class="auth-logo">🔢</span>
+      <h1 class="auth-title" id="create-pin-title" data-i18n="create_pin_title">Create PIN</h1>
+      <p class="auth-desc" id="create-pin-desc" data-i18n="create_pin_desc">Enter a new 4-digit PIN</p>
+    </div>
+    <div class="pin-dots">
+      <span class="pin-dot" id="create-pin-dot-0"></span>
+      <span class="pin-dot" id="create-pin-dot-1"></span>
+      <span class="pin-dot" id="create-pin-dot-2"></span>
+      <span class="pin-dot" id="create-pin-dot-3"></span>
+    </div>
+    <div class="pin-error hidden" id="create-pin-error" data-i18n="pin_mismatch">PINs do not match!</div>
+    <div class="pin-pad">
+      <button class="pin-key create-key" data-key="1">1</button><button class="pin-key create-key" data-key="2">2</button><button class="pin-key create-key" data-key="3">3</button>
+      <button class="pin-key create-key" data-key="4">4</button><button class="pin-key create-key" data-key="5">5</button><button class="pin-key create-key" data-key="6">6</button>
+      <button class="pin-key create-key" data-key="7">7</button><button class="pin-key create-key" data-key="8">8</button><button class="pin-key create-key" data-key="9">9</button>
+      <button class="pin-key pin-key-empty"></button><button class="pin-key create-key" data-key="0">0</button><button class="pin-key pin-key-del create-key" data-key="del">⌫</button>
+    </div>
+  </div>
+
+  <!-- ════════════ MAIN APP ════════════ -->
+  <div class="app-wrapper hidden" id="app-wrapper">
+
+    <div class="offline-banner" id="offline-banner">
+      <div class="spinner-small"></div>
+      <span data-i18n="offline_msg">Offline mode — reconnecting...</span>
+    </div>
+    <div class="toast-container" id="toast-container"></div>
+
+    <!-- Header -->
+    <header class="app-header">
+      <div class="app-logo">
+
+        <span class="app-logo-text" id="header-user-label">Smart Irrigation</span>
+      </div>
+      <div class="header-actions">
+        <div class="connection-dot" id="connection-dot" title="Connection Status"></div>
+        <button class="btn-icon lang-btn" id="lang-toggle-btn" aria-label="Toggle language">EN</button>
+        <button class="btn-icon" id="theme-toggle-btn" aria-label="Toggle dark mode">🌙</button>
+      </div>
+    </header>
+
+    <main class="main-content">
+
+      <!-- ═══ DASHBOARD TAB ═══ -->
+      <div class="tab-view active" id="tab-dashboard">
+
+        <!-- LoRa Link Status -->
+        <div class="card lora-link-card" id="lora-link-card">
+          <div class="card-title"><span class="icon">📡</span> <span data-i18n="lora_network_status">LoRa Network Status</span></div>
+          <div class="lora-link-status" id="lora-link-status" style="flex-direction: column; gap: 12px; align-items: stretch; text-align: left; padding: 10px 0;">
+            <div style="border-bottom: 1px solid var(--border-color); margin-bottom: 4px;"></div>
+            <div class="link-detail" style="justify-content: space-between; width: 100%;">
+              <span class="detail-label" style="flex-shrink:1; margin-right:10px;">🏠 Gateway (ESP32):</span>
+              <span class="detail-value" id="home-esp32-status-val" style="white-space:nowrap; font-weight: 500;">⚪ Unknown</span>
+            </div>
+            <div class="link-detail" style="justify-content: space-between; width: 100%;">
+              <span class="detail-label" style="flex-shrink:1; margin-right:10px;">📡 LoRa Link:</span>
+              <span class="detail-value" id="home-lora-status-val" style="white-space:nowrap; font-weight: 500;">⚪ Unknown</span>
+            </div>
+            <div class="link-detail" style="justify-content: space-between; width: 100%;">
+              <span class="detail-label" style="flex-shrink:1; margin-right:10px;">🌾 Field ESP32:</span>
+              <span class="detail-value" id="field-esp32-status-val" style="white-space:nowrap; font-weight: 500;">⚪ Unknown</span>
+            </div>
+            <div class="link-detail" style="justify-content: space-between; width: 100%;">
+              <span class="detail-label" style="flex-shrink:1; margin-right:10px;">🌾 Field LoRa:</span>
+              <span class="detail-value" id="field-lora-status-val" style="white-space:nowrap; font-weight: 500;">⚪ Unknown</span>
+            </div>
+            <div style="border-top: 1px solid var(--border-color); margin-top: 4px; display: none;"></div>
+          </div>
+        </div>
+
+        <!-- Signal Lost -->
+        <div class="signal-lost-overlay" id="signal-lost-overlay">
+          <div class="lockout-title" data-i18n="lora_signal_lost">⚠ LoRa Signal Lost</div>
+        </div>
+
+        <!-- Command Status -->
+        <div class="cmd-status-bar hidden" id="cmd-status-bar">
+          <div class="spinner-small"></div>
+          <span id="cmd-status-text" data-i18n="sending_command">Sending command...</span>
+        </div>
+
+        <!-- Phase Warning -->
+        <div class="warning-banner hidden" id="warning-banner">
+          <span class="warn-icon">⚠️</span>
+          <span data-i18n="phase_missing_warn">Motor cannot be turned ON (Phase missing)</span>
+        </div>
+
+        <!-- 3-Phase Status -->
+        <div class="card">
+          <div class="card-title"><span class="icon">⚡</span> <span data-i18n="phase_power_title">3-Phase Power Status</span></div>
+          <div class="phase-grid" style="grid-template-columns: 1fr;">
+            <div class="phase-item" style="flex-direction: row; justify-content: flex-start; padding: 15px; border-radius: 12px; background: rgba(0,0,0,0.02); gap: 15px; align-items: center;">
+              <div class="phase-indicator off" id="phase-status-indicator" style="width: 45px; height: 45px; font-size: 1.2rem;">⚡</div>
+              <div style="display: flex; flex-direction: column; align-items: flex-start;">
+                <div class="phase-label" id="phase-type-label" style="font-weight: 600; font-size: 1.1rem; color: var(--text-primary);">3-Phase Power</div>
+                <div class="phase-status off" id="phase-status-text" style="font-size: 0.95rem; font-weight: 500; margin-top: 4px;">OFFLINE</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Motor Control -->
+        <div class="card">
+          <div class="card-title"><span class="icon">⚙️</span> <span data-i18n="motor_control">Motor Control</span></div>
+          <div class="motor-section">
+            <div class="motor-status">
+              <span class="status-dot off" id="motor-status-dot"></span>
+              <span id="motor-status-text" data-i18n="motor_off">Motor OFF</span>
+            </div>
+            <div class="cmd-actual-row hidden" id="cmd-actual-row" style="display:flex; flex-direction:column; gap:4px; align-items:center;">
+              <div><span class="cmd-label">Motor Command:</span> <span id="cmd-state" style="font-weight:600;">—</span></div>
+              <div><span class="actual-label">Motor Actual:</span> <span id="actual-state" style="font-weight:600;">—</span></div>
+              <div><span class="actual-label">⚡ Motor Current:</span> <span id="current-state" style="font-weight:600;">— A</span></div>
+            </div>
+            <div class="abnormal-banner hidden" id="abnormal-current-banner">
+              <span>⚠</span> <span data-i18n="abnormal_current">Abnormal current detected</span>
+            </div>
+            <!-- Timer status inline -->
+            <div class="timer-inline hidden" id="timer-inline">
+              <span class="timer-badge" data-i18n="timer_on">⏱ Timer ON</span>
+              <span class="timer-countdown" id="timer-countdown">—</span>
+            </div>
+            <!-- Schedule inline -->
+            <div class="schedule-inline hidden" id="schedule-inline">
+              <span class="schedule-badge">📅</span>
+              <span id="schedule-next-text"></span>
+            </div>
+            <button class="motor-btn turn-on" id="motor-btn">
+              <span id="motor-btn-icon">⏻</span>
+              <span id="motor-btn-text" data-i18n="turn_motor_on">TURN MOTOR ON</span>
+              <span class="spinner hidden" id="motor-btn-spinner" aria-hidden="true"></span>
+            </button>
+            <button class="btn btn-warning btn-full hidden" id="power-reminder-btn" style="margin-top: 10px;">
+              <span class="icon">🔔</span> <span id="power-reminder-text" data-i18n="set_reminder">Set Reminder</span>
+            </button>
+          </div>
+        </div>
+
+
+
+        <!-- Auto Timer Mode -->
+        <div class="card">
+          <div class="card-title"><span class="icon">⏱</span> <span data-i18n="auto_timer">Auto Timer Mode</span></div>
+          <div class="timer-section">
+            <div id="timer-setting-view">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding: 0 4px;">
+                <span data-i18n="minutes" style="font-size: 1rem; color: var(--text-secondary); font-weight: 500;">Minutes</span>
+                <div style="background: rgba(0, 200, 83, 0.15); color: var(--color-green, #00c853); padding: 4px 12px; border-radius: 20px; font-weight: 700; font-size: 1.05rem;" id="timer-val">30</div>
+              </div>
+              <div class="timer-input-group" style="margin-bottom: 25px;">
+                <input type="range" id="timer-slider" min="1" max="180" step="1" value="30">
+              </div>
+              
+              <div style="display: flex; gap: 15px; align-items: center; justify-content: center; margin-bottom: 20px;">
+                <div style="display: flex; flex-direction: column; align-items: center;">
+                  <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">Hours</label>
+                  <input type="number" id="timer-hours-input" min="0" max="12" value="0" style="width: 65px; height: 50px; font-size: 1.4rem; font-weight: 800; text-align: center; border-radius: 12px; border: 1.5px solid var(--border-color, #e0e4ea); background: var(--bg-card, #fff); color: var(--text-primary); font-family: inherit; outline: none; transition: border-color 0.2s;">
+                </div>
+                <div style="font-size: 1.8rem; font-weight: bold; margin-top: 20px; color: var(--text-secondary);">:</div>
+                <div style="display: flex; flex-direction: column; align-items: center;">
+                  <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">Minutes</label>
+                  <input type="number" id="timer-mins-input" min="0" max="59" value="30" style="width: 65px; height: 50px; font-size: 1.4rem; font-weight: 800; text-align: center; border-radius: 12px; border: 1.5px solid var(--border-color, #e0e4ea); background: var(--bg-card, #fff); color: var(--text-primary); font-family: inherit; outline: none; transition: border-color 0.2s;">
+                </div>
+              </div>
+              <button class="btn btn-primary btn-full" id="timer-start-btn" data-i18n="start_timer">▶ Start Timer</button>
+            </div>
+            
+            <div id="timer-active-view" class="hidden timer-active-state">
+              <div class="timer-animation"><div class="timer-ring"></div></div>
+              <div class="timer-countdown" id="timer-countdown-display">00:30:00</div>
+              <div class="timer-remaining" id="timer-countdown-text">30 minutes remaining</div>
+              <div class="timer-progress-container"><div class="timer-progress-bar" id="timer-progress-bar"></div></div>
+              <button class="btn btn-danger btn-full" id="timer-stop-btn" data-i18n="stop_timer">⏹ Stop Timer</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Motor Schedule -->
+        <div class="card">
+          <div class="card-title"><span class="icon">📅</span> <span data-i18n="schedule_title">Motor Schedule</span></div>
+          <div class="sched-form" id="sched-form">
+            <div class="schedule-row"><label data-i18n="start_time">Start Time</label><input type="time" id="sched-time" value="06:00"></div>
+            <div class="sched-duration-label" data-i18n="duration">Duration</div>
+            <div class="time-input-group">
+              <div class="time-input-col"><label class="time-input-label" data-i18n="hours">Hours</label><input type="number" class="time-input-field" id="sched-dur-hours" min="0" max="5" value="1"></div>
+              <span class="time-input-sep">:</span>
+              <div class="time-input-col"><label class="time-input-label" data-i18n="timer_minutes">Minutes</label><input type="number" class="time-input-field" id="sched-dur-mins" min="0" max="59" value="30"></div>
+            </div>
+            <div class="settings-item" style="border:none;padding:6px 0;"><div class="settings-info"><div class="settings-title" data-i18n="repeat_daily">Repeat Daily</div></div><label class="toggle-switch"><input type="checkbox" id="sched-repeat" checked><span class="toggle-slider"></span></label></div>
+            <button class="btn btn-primary btn-full" id="sched-add-btn" data-i18n="add_schedule">➕ Add Schedule</button>
+          </div>
+          <div class="sched-conflict hidden" id="sched-conflict" data-i18n="schedule_conflict">⚠ Schedule conflict detected</div>
+          <div class="sched-list" id="sched-list"></div>
+          <div class="sched-empty" id="sched-empty" data-i18n="no_schedules">No schedules added</div>
+        </div>
+      </div>
+
+      <!-- ═══ LORA TAB ═══ -->
+      <div class="tab-view" id="tab-lora">
+        <div class="lora-lost-banner" id="lora-lost-banner"><span>⚠️</span><span data-i18n="lora_lost_banner">LoRa signal lost</span></div>
+        <div class="card">
+          <div class="card-title"><span class="icon">📡</span> <span data-i18n="lora_communication">LoRa Communication</span></div>
+          <div class="lora-signal-row"><span class="signal-badge good" id="signal-badge"><span id="signal-badge-text">✓ Signal: Good</span></span></div>
+          <div class="lora-grid">
+            <div class="lora-metric"><div class="metric-value text-green" id="lora-rssi-value">-85</div><div class="metric-unit">dBm</div><div class="metric-label">RSSI</div></div>
+            <div class="lora-metric"><div class="metric-value" id="lora-snr-value">9.5</div><div class="metric-unit">dB</div><div class="metric-label">SNR</div></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title"><span class="icon">⏱</span> <span data-i18n="transmission_settings">Transmission Settings</span></div>
+          <div class="slider-group">
+            <div class="slider-header"><span class="slider-label" data-i18n="signal_interval">Signal Transmission Interval</span><span class="slider-value" id="interval-value">3s</span></div>
+            <input type="range" id="interval-slider" min="3" max="30" step="1" value="3">
+            <div class="slider-note" data-i18n="slider_note">Lower value = faster updates, higher power usage</div>
+          </div>
+        </div>
+
+
+      </div>
+
+      <!-- ═══ ANALYTICS TAB ═══ -->
+      <div class="tab-view" id="tab-analytics">
+        <!-- Motor Usage -->
+        <div class="card">
+          <div class="card-title"><span class="icon">📊</span> <span data-i18n="motor_usage">Motor Usage</span></div>
+          <div class="usage-grid usage-grid-4">
+            <div class="usage-card"><div class="usage-value" id="usage-session">—</div><div class="usage-label" data-i18n="current_session">Session</div></div>
+            <div class="usage-card"><div class="usage-value" id="usage-today">—</div><div class="usage-label" data-i18n="today_runtime">Today</div></div>
+            <div class="usage-card"><div class="usage-value" id="usage-week">—</div><div class="usage-label" data-i18n="week_runtime">This Week</div></div>
+            <div class="usage-card"><div class="usage-value" id="usage-month">—</div><div class="usage-label" data-i18n="month_runtime">This Month</div></div>
+          </div>
+          <p class="settings-desc" id="usage-data-note" style="margin-top:12px;">Loading recorded motor usage…</p>
+        </div>
+
+        <!-- Electricity / Current -->
+        <div class="card">
+          <div class="card-title"><span class="icon">⚡</span> <span data-i18n="electricity">Power Status</span></div>
+          <div class="current-live-row">
+            <div class="current-live"><span class="current-val" id="current-live-val" style="font-weight: bold;">OFF</span></div>
+          </div>
+          <div class="chart-range-btns" id="current-range-btns">
+            <button class="chart-range-btn active" data-range="today" data-i18n="today_chart">Today</button>
+            <button class="chart-range-btn" data-range="yesterday" data-i18n="yesterday_chart">Yesterday</button>
+          </div>
+          <div class="chart-container"><div class="chart-label" data-i18n="current_chart">STATUS (1 = ON, 0 = OFF)</div><canvas id="current-chart" class="signal-chart"></canvas></div>
+        </div>
+
+        <!-- LoRa Signal Analytics -->
+        <div class="card">
+          <div class="card-title"><span class="icon">📡</span> <span data-i18n="signal_history">LoRa Signal Analytics</span></div>
+          <div class="chart-range-btns" id="signal-range-btns">
+            <button class="chart-range-btn active" data-range="30" data-i18n="last_30_min">Last 30 Min</button>
+            <button class="chart-range-btn" data-range="1440" data-i18n="last_24_hr">Last 24 Hr</button>
+          </div>
+          <div class="chart-container"><div class="chart-label" data-i18n="rssi_chart">RSSI (dBm)</div><canvas id="rssi-chart" class="signal-chart"></canvas></div>
+          <div class="chart-container"><div class="chart-label" data-i18n="snr_chart">SNR (dB)</div><canvas id="snr-chart" class="signal-chart"></canvas></div>
+        </div>
+
+        <!-- System Logs -->
+        <div class="card">
+          <div class="card-title"><span class="icon">📜</span> <span data-i18n="system_logs">System Logs</span></div>
+          <div class="log-actions">
+            <button type="button" class="btn btn-secondary" id="delete-old-logs-btn" data-i18n="delete_old_logs">Delete logs older than 10 days</button>
+            <button type="button" class="btn btn-danger" id="delete-all-logs-btn" data-i18n="delete_all_logs">Delete all logs</button>
+          </div>
+          <p class="log-action-status" id="log-action-status" role="status" aria-live="polite"></p>
+          <div class="log-list" id="log-list"><div class="log-empty" data-i18n="no_logs">No events logged yet</div></div>
+        </div>
+      </div>
+
+      <!-- ═══ SETTINGS TAB ═══ -->
+      <div class="tab-view" id="tab-settings">
+        <!-- User Info -->
+        <div class="card">
+          <div class="card-title"><span class="icon">👤</span> <span data-i18n="user_info">User Info</span></div>
+          <div class="settings-item"><div class="settings-info"><div class="settings-title" data-i18n="logged_in_as">Logged in as:</div><div class="settings-desc" id="settings-username">—</div></div></div>
+          <div class="settings-item"><div class="settings-info"><div class="settings-title" data-i18n="device_id_label">Device ID:</div><div class="settings-desc" id="settings-device-id">—</div></div></div>
+          <div class="settings-item" style="border-bottom:none;"><button class="btn btn-danger btn-full" id="logout-btn" data-i18n="change_user">🚪 Change User</button></div>
+        </div>
+        <!-- Security Settings -->
+        <div class="card" id="security-settings-card">
+          <div class="card-title"><span class="icon">🛡️</span> <span data-i18n="security_settings">Security Settings</span></div>
+          
+          <div class="settings-item" id="security-status-item">
+            <div class="settings-info">
+              <div class="settings-title" data-i18n="pin_lock_status">PIN Lock Status</div>
+              <div class="settings-desc" id="pin-lock-status-desc" style="color:var(--color-orange)">Disabled</div>
+            </div>
+          </div>
+          
+          <div class="settings-item hidden" id="ask-pin-item">
+            <div class="settings-info">
+              <div class="settings-title" data-i18n="ask_pin_startup">Require PIN on Startup</div>
+              <div class="settings-desc" data-i18n="ask_pin_desc">Show lock screen on open</div>
+            </div>
+            <label class="toggle-switch"><input type="checkbox" id="ask-pin-toggle" checked><span class="toggle-slider"></span></label>
+          </div>
+          
+          <div id="pin-controls">
+            <div class="settings-item" style="border-bottom:none; padding-bottom:0;" id="enable-pin-btn-container">
+              <button class="btn btn-primary btn-full" id="enable-pin-btn">🔒 Enable PIN Lock</button>
+            </div>
+            <div class="settings-item hidden" style="border-bottom:none; padding-bottom:0;" id="disable-pin-btn-container">
+              <button class="btn btn-secondary btn-full" id="disable-pin-btn" style="background:var(--bg-secondary); color:var(--color-red); border:1px solid var(--color-red);">🔓 Disable PIN</button>
+            </div>
+          </div>
+
+          <div class="pin-change-form hidden" id="pin-change-form" style="margin-top:20px;">
+            <div style="font-weight:bold; margin-bottom:10px; color:var(--text-secondary); font-size:14px;">Change PIN</div>
+            <input type="password" class="pw-input" id="pin-current" maxlength="4" inputmode="numeric" placeholder="Current PIN">
+            <input type="password" class="pw-input" id="pin-new" maxlength="4" inputmode="numeric" placeholder="New PIN (4 digits)">
+            <input type="password" class="pw-input" id="pin-confirm" maxlength="4" inputmode="numeric" placeholder="Confirm New PIN">
+            <div class="pin-change-error hidden" id="pin-change-error"></div>
+            <div class="pin-change-success hidden" id="pin-change-success" data-i18n="pin_updated">PIN updated successfully</div>
+            <button class="btn btn-primary btn-full" id="pin-update-btn" data-i18n="update_pin">Update PIN</button>
+          </div>
+        </div>
+
+        <!-- Appearance -->
+        <div class="card">
+          <div class="card-title"><span class="icon">🎨</span> <span data-i18n="appearance">Appearance</span></div>
+          <div class="settings-item"><div class="settings-info"><div class="settings-title" data-i18n="dark_mode">Dark Mode</div><div class="settings-desc" data-i18n="dark_mode_desc">Reduce glare</div></div><label class="toggle-switch"><input type="checkbox" id="dark-mode-toggle"><span class="toggle-slider"></span></label></div>
+        </div>
+        <!-- Notifications -->
+        <div class="card">
+          <div class="card-title"><span class="icon">🔔</span> <span data-i18n="notification_settings">Notification Settings</span></div>
+          <div class="settings-item"><div class="settings-info"><div class="settings-title" data-i18n="enable_notifications">Enable Notifications</div><div class="settings-desc" data-i18n="notif_desc">Receive alerts</div></div><label class="toggle-switch"><input type="checkbox" id="notif-toggle" checked><span class="toggle-slider"></span></label></div>
+          <div class="settings-item"><div class="settings-info"><div class="settings-title" data-i18n="vibration">Vibration</div><div class="settings-desc" data-i18n="vibration_desc">Vibrate on alert</div></div><label class="toggle-switch"><input type="checkbox" id="vib-toggle" checked><span class="toggle-slider"></span></label></div>
+          <div class="settings-item"><div class="settings-info"><div class="settings-title" data-i18n="reminder_sound">Reminder Sound</div><div class="settings-desc" data-i18n="reminder_sound_desc">Choose reminder tone</div></div><div class="select-wrap"><select id="sound-select"><option value="default">⏰ Classic</option><option value="siren">🚨 Siren</option><option value="bell">🔔 Bell</option><option value="custom">📁 Custom</option></select></div></div>
+          <div class="custom-audio-row hidden" id="custom-audio-row"><label class="custom-audio-label-btn"><span data-i18n="choose_audio">📂 Choose Sound</span><input type="file" accept="audio/*" id="custom-audio-input" style="display:none"></label><div class="custom-audio-name" id="custom-audio-name" data-i18n="no_file">No file</div></div>
+          <div class="settings-item" style="border-bottom:none;"><button class="btn btn-warning btn-full" id="test-notif-btn" data-i18n="test_reminder">🚨 Test Reminder (1 min)</button></div>
+        </div>
+
+        
+        <div class="app-info"><div class="app-version" data-i18n="app_version_info">Smart Irrigation System v1.0</div><div>ESP32 + LoRa + Firebase</div><div style="margin-top:4px;" data-i18n="built_for">Built for rural agriculture</div></div>
+      </div>
+
+    </main>
+
+    <!-- Bottom Navigation (4 tabs) -->
+    <nav class="bottom-nav">
+      <button class="nav-item active" data-tab="tab-dashboard"><span class="nav-icon">🏠</span><span data-i18n="nav_dashboard">Dashboard</span></button>
+      <button class="nav-item" data-tab="tab-lora"><span class="nav-icon">📡</span><span>LoRa</span></button>
+      <button class="nav-item" data-tab="tab-analytics"><span class="nav-icon">📊</span><span data-i18n="nav_analytics">Analytics</span></button>
+      <button class="nav-item" data-tab="tab-settings"><span class="nav-icon">⚙️</span><span data-i18n="nav_settings">Settings</span></button>
+    </nav>
+  </div>
+
+  <!-- Popups (outside app-wrapper) -->
+  <!-- Phase Missing Alert -->
+  <div class="alert-overlay" id="alert-overlay"><div class="alert-popup"><div class="alert-icon">⚠️</div><div class="alert-title" data-i18n="phase_missing_title">Phase Missing</div><div class="alert-message" data-i18n="phase_missing_msg">Motor cannot start due to missing power phase.</div><div class="alert-actions"><button class="btn btn-warning btn-full" id="alert-remind" data-i18n="remind_me">🔔 Remind Me</button><button class="btn btn-secondary btn-full" id="alert-dismiss" data-i18n="dismiss">Dismiss</button></div></div></div>
+  <!-- Confirm Restart -->
+  <div class="alert-overlay" id="confirm-overlay"><div class="alert-popup"><div class="alert-icon">🔄</div><div class="alert-title" id="confirm-title" data-i18n="confirm_restart">Confirm Restart</div><div class="alert-message" id="confirm-message"></div><div class="alert-actions"><button class="btn btn-warning btn-full" id="confirm-yes" data-i18n="confirm_restart_btn">✓ Confirm Restart</button><button class="btn btn-secondary btn-full" id="confirm-no" data-i18n="cancel">Cancel</button></div></div></div>
+  <!-- Update -->
+  <div class="alert-overlay" id="update-overlay"><div class="alert-popup"><div class="alert-icon">⬆️</div><div class="alert-title" id="update-title" data-i18n="update_available">New Update</div><div class="alert-message" id="update-message"></div><div class="alert-actions"><button class="btn btn-primary btn-full" id="update-download-btn" data-i18n="download_update">⬇️ Download</button><button class="btn btn-secondary btn-full" id="update-later-btn" data-i18n="later">Later</button></div></div></div>
+  <!-- Force Update -->
+  <div class="force-update-overlay hidden" id="force-update-overlay"><div class="force-update-content"><div class="force-update-icon">🔒</div><div class="force-update-title" data-i18n="update_required">Update Required</div><div class="force-update-msg" id="force-update-msg" data-i18n="must_update">You must update.</div><button class="btn btn-primary btn-full" id="force-update-btn" data-i18n="download_update">⬇️ Download</button></div></div>
+  <!-- Motor Long Run Alert -->
+  <div class="alert-overlay" id="longrun-overlay"><div class="alert-popup"><div class="alert-icon">⚠️</div><div class="alert-title" data-i18n="motor_long_run_title">⚠ Motor Running Too Long</div><div class="alert-message" id="longrun-message"></div><div class="alert-actions"><button class="btn btn-danger btn-full" id="longrun-off-btn" data-i18n="turn_off_motor">Turn OFF Motor</button><button class="btn btn-secondary btn-full" id="longrun-keep-btn" data-i18n="keep_running">Keep Running</button></div></div></div>
+  <!-- Reminder Overlay -->
+  <div class="alarm-overlay" id="alarm-overlay"><div class="alarm-ring" id="alarm-ring">🔔</div><div class="alarm-title" data-i18n="reminder_title">⚠ REMINDER</div><div class="alarm-message" id="alarm-message"></div><div class="alarm-timer" id="alarm-timer">1:00</div><div class="alarm-actions"><button class="alarm-btn alarm-btn-stop" id="alarm-dismiss-btn" data-i18n="stop_reminder">✕ STOP REMINDER</button></div></div>
+
+  <!-- Scripts -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script>
+  <script src="firebase-config.local.js"></script>
+  <script src="firebase-config.js?v=17"></script>
+  <script src="i18n.js?v=14"></script>
+  <script src="chart.js?v=18"></script>
+  <script src="runtime.js?v=14"></script>
+  <script src="app.js?v=18"></script>
+  <script>document.getElementById('theme-toggle-btn').addEventListener('click',function(){const t=document.getElementById('dark-mode-toggle');t.checked=!t.checked;t.dispatchEvent(new Event('change'));});</script>
+</body>
+</html>
