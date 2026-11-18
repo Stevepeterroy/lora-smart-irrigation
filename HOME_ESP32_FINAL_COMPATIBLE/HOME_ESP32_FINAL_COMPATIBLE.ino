@@ -1,8 +1,8 @@
-#include "secrets.h" // Copy secrets.example.h and configure locally.
 #include <WiFi.h>
 #include <Firebase_ESP_Client.h>
 #include <SPI.h>
 #include <LoRa.h>
+#include "secrets.h"
 
 /*
    FINAL COMPATIBLE HOME CONTROLLER
@@ -94,14 +94,9 @@
 
 
 
-
-
 /* =========================================================
                        FIREBASE
    ========================================================= */
-
-
-
 
 
 

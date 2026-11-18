@@ -2,14 +2,14 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="theme-color" content="#0a1628">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="description" content="Smart Irrigation System — Remote motor control and 3-phase power monitoring.">
   <title>Smart Irrigation System</title>
   <link rel="manifest" href="manifest.json">
-  <link rel="stylesheet" href="styles.css?v=12">
+  <link rel="stylesheet" href="styles.css?v=1304">
 </head>
 <body data-theme="light">
 
@@ -428,16 +428,16 @@
   <div class="alarm-overlay" id="alarm-overlay"><div class="alarm-ring" id="alarm-ring">🔔</div><div class="alarm-title" data-i18n="reminder_title">⚠ REMINDER</div><div class="alarm-message" id="alarm-message"></div><div class="alarm-timer" id="alarm-timer">1:00</div><div class="alarm-actions"><button class="alarm-btn alarm-btn-stop" id="alarm-dismiss-btn" data-i18n="stop_reminder">✕ STOP REMINDER</button></div></div>
 
   <!-- Scripts -->
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="vendor/firebase-app-compat.js"></script>
 
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script>
+  <script src="vendor/firebase-database-compat.js"></script>
+  <script src="vendor/firebase-storage-compat.js"></script>
   <script src="firebase-config.local.js"></script>
-  <script src="firebase-config.js?v=17"></script>
-  <script src="i18n.js?v=14"></script>
-  <script src="chart.js?v=18"></script>
-  <script src="runtime.js?v=14"></script>
-  <script src="app.js?v=18"></script>
+  <script src="firebase-config.js?v=1304"></script>
+  <script src="i18n.js?v=1304"></script>
+  <script src="chart.js?v=1304"></script>
+  <script src="runtime.js?v=1304"></script>
+  <script src="app.js?v=1304"></script>
   <script>document.getElementById('theme-toggle-btn').addEventListener('click',function(){const t=document.getElementById('dark-mode-toggle');t.checked=!t.checked;t.dispatchEvent(new Event('change'));});</script>
 </body>
 </html>

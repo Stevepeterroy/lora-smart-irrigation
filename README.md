@@ -1,43 +1,55 @@
-# LoRa Smart Irrigation
+# LoRa Smart Irrigation — v1.3.0
 
-An ESP32 and LoRa irrigation prototype with a Firebase-connected dashboard and an Android wrapper. The home gateway relays motor commands over LoRa and records acknowledged field status separately from requested motor state.
+The working source snapshot from `lora irrigation final`, containing the Home gateway, full Field motor controller, web dashboard and Android v1.3 project. The Field code replaces the LED-only stub in the earlier GitHub snapshot.
 
-## Engineering highlights
+This publication preserves the requested folder's control logic. It does not include the separate latency changes from `final esp lora irrigation`.
 
-- ESP32 gateway with Wi-Fi, Firebase Realtime Database and 433 MHz LoRa.
-- Command identifiers, acknowledgments, retries and field-offline timeouts.
-- Dashboard controls, runtime analytics, scheduling and multilingual interface.
-- Android packaging through Capacitor.
+## Contents
 
-## Architecture
+- `HOME_ESP32_FINAL_COMPATIBLE/`: Home ESP32 firmware and private configuration example.
+- `field_esp32_motor_controller_fixed/`: full Field firmware, current sensing, relay control and LoRa command handling.
+- `lora irrigation app new/`: static website for Netlify or a local web server.
+- `android lora irrigation  app new/`: web sources and Capacitor Android project.
 
-```text
-Web / Android dashboard ↔ Firebase ↔ Home ESP32 ↔ LoRa ↔ Field controller ↔ Motor
-```
+## Home and Field configuration
 
-## Source layout
+Copy `HOME_ESP32_FINAL_COMPATIBLE/secrets.example.h` to `secrets.h` in the same directory. Fill in your own Wi-Fi and Firebase values. `secrets.h` is ignored by Git; the repository contains no deployment Wi-Fi password or gateway Firebase token.
 
-- `HOME_ESP32_FINAL_COMPATIBLE/`: home gateway sketch and private configuration template.
-- `field_esp32_motor_controller_fixed/`: supplied field sketch; currently only an LED initialization stub.
-- `lora irrigation app new/`: browser app.
-- `android lora irrigation  app new/`: Android-capable app and native project.
+Use the ESP32 Dev Module board preset and the LoRa and Firebase ESP Client libraries. Open each sketch from its own folder and upload it to the corresponding board. Wiring, calibration and current thresholds remain those of the supplied working sketches; publishing this snapshot does not itself fix their reporting latency.
 
-## Setup
+## Website configuration
 
-1. Copy `HOME_ESP32_FINAL_COMPATIBLE/secrets.example.h` to `secrets.h` beside the sketch and supply your own Wi-Fi/Firebase values. Install the ESP32 Arduino core and the WiFi, Firebase ESP Client and LoRa libraries required by the includes. Verify the wiring and local radio rules before powering hardware.
-2. In either app directory, copy `firebase-config.local.example.js` to `firebase-config.local.js` and supply a separate Firebase project configuration. Serve that directory with `python3 -m http.server 8080`.
-3. Configure Firebase authentication and database/storage authorization rules before connecting real equipment. Client-side PIN controls do not replace backend authorization. The gateway currently uses legacy Firebase authentication; use a separate development project and replace it with scoped authentication before deployment.
-4. For Android, run `npm ci` in the Android app directory. Stage the web assets into `www/`, run `npx cap sync android`, then build with Android Studio. APKs and generated web assets are intentionally excluded.
+Copy the app's `firebase-config.local.example.js` to `firebase-config.local.js` and enter your Firebase web-app configuration. That local file is ignored. The browser config loader reads it before starting Firebase.
 
-## Tests
+Run locally:
 
 ```sh
-node --test "lora irrigation app new/tests/analytics.test.cjs"
-node --test "android lora irrigation  app new/tests/analytics.test.cjs"
+python3 -m http.server 8080 --bind 127.0.0.1 --directory "lora irrigation app new"
 ```
 
-## Prototype status
+Open http://127.0.0.1:8080/.
 
-The supplied field sketch does not implement motor control or LoRa reception. This snapshot therefore does not reproduce a complete working irrigation system. No hardware safety certification, range measurement or end-to-end validation is claimed. Use suitable electrical isolation, interlocks and supervised testing before any pump connection.
+For Netlify, connect this repository, add a build environment variable named `FIREBASE_WEB_CONFIG` containing your Firebase **web** configuration as JSON, and deploy. `netlify.toml` generates the ignored config file at build time and publishes only `lora irrigation app new`.
 
-This public snapshot contains source and configuration templates. Deployment credentials, APKs, dependency directories and prior Git history are excluded.
+Browser Firebase configuration is visible to visitors after deployment. Moving it into build configuration keeps this deployment's values out of Git, but does not make browser code private. Protect data access with Firebase authentication and database/storage rules. Never put the gateway legacy token, Wi-Fi password, service-account key or signing key in `FIREBASE_WEB_CONFIG`.
+
+## Android
+
+Configure `firebase-config.local.js` in the Android app directory, then:
+
+```sh
+cd "android lora irrigation  app new"
+npm ci
+npm run sync:android
+```
+
+Build the native `android` project with Android Studio. Alternatively, with a local Android SDK and Java 21 configured, run `./gradlew assembleDebug` inside `android/`. Local SDK paths and signing files are not committed. Generated APKs and generated native web assets are excluded because they can embed deployment configuration.
+
+## Tests and publication verification
+
+```sh
+node --test "android lora irrigation  app new/tests/"*.test.cjs
+node --test tests/*.test.cjs
+```
+
+See `PUBLICATION.md` for the checks performed on this version. Credentials must be configured locally before deployment; no live motor commands were issued for publication tests.

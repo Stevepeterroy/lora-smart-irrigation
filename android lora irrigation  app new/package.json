@@ -7,7 +7,9 @@
     "test": "tests"
   },
   "scripts": {
-    "test": "node --test tests/*.test.cjs"
+    "test": "node --test tests/*.test.cjs",
+    "build:web": "node scripts/stage-web.cjs",
+    "sync:android": "npm run build:web && cap sync android"
   },
   "keywords": [],
   "author": "",

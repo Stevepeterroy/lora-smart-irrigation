@@ -1,0 +1,8 @@
+[build]
+  command = "node scripts/generate-web-config.cjs"
+  publish = "lora irrigation app new"
+
+[[headers]]
+  for = "/firebase-config.local.js"
+  [headers.values]
+    Cache-Control = "no-store"

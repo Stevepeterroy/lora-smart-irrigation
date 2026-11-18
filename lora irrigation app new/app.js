@@ -3,7 +3,7 @@
 // ============================================
 (function () {
   'use strict';
-  const APP_VERSION_CODE = 1, APP_VERSION_NAME = 'v1.0';
+  const APP_VERSION_CODE = 4, APP_VERSION_NAME = 'v1.3';
   const ALARM_DURATION_MS = 60000, HEARTBEAT_TIMEOUT_MS = 10000;
   const LONG_RUN_MS = 2 * 60 * 60 * 1000; // 2 hours
   let dbRefs = null;
@@ -374,7 +374,8 @@ function isPhaseAvailableValue(value) {
     let initialMotorActual = true;
     if (dbRefs.motorActual) dbRefs.motorActual.on('value', s => { 
       const oldState = state.motorActual;
-      state.motorActual = s.val() || 'UNKNOWN'; 
+      const actual = String(s.val() || '').toUpperCase();
+      state.motorActual = ['ON', 'OFF'].includes(actual) ? actual : 'UNKNOWN';
       state.motorActualLoaded = true;
       
       if (!initialMotorActual && oldState !== state.motorActual && state.motorActual !== 'UNKNOWN') {
@@ -433,8 +434,9 @@ function isPhaseAvailableValue(value) {
     if (dbRefs.psrRaw) dbRefs.psrRaw.on('value', s => { state.psrRaw = s.val(); });
     // FIX: Single consolidated currentAmps listener (was duplicated)
     if (dbRefs.currentAmps) dbRefs.currentAmps.on('value', s => { 
-      const val = s.val();
-      state.currentAmps = val || 0; 
+      const raw = s.val();
+      const val = typeof raw === 'number' && Number.isFinite(raw) && raw >= 0 ? raw : null;
+      state.currentAmps = val;
       state.motorCurrent = val; 
       if (typeof updateCurrentAnalyticsUI === 'function') updateCurrentAnalyticsUI(); 
       updateMotorUI(); 
@@ -524,30 +526,16 @@ function isPhaseAvailableValue(value) {
     }
     if (dbRefs.alert) dbRefs.alert.on('value', s => { state.alert = s.val() === true; if (state.alert) showAlertPopup(); });
     if (dbRefs.transmissionInterval) dbRefs.transmissionInterval.on('value', s => { const v = s.val(); if (v != null) { state.transmissionInterval = parseFloat(v); if (dom.intervalSlider) dom.intervalSlider.value = state.transmissionInterval; updateIntervalDisplay(); } });
-    let lastFieldSeenRaw = null;
+    // Always use the timestamp supplied by Home. A cached snapshot or
+    // reconnect must never make an old reading look newly measured.
     if (dbRefs.fieldLastSeen) dbRefs.fieldLastSeen.on('value', s => {
       state.fieldHeartbeatLoaded = true;
-      const val = s.val();
-      if (val !== lastFieldSeenRaw && lastFieldSeenRaw !== null) {
-        state.lastFieldUpdate = serverNow();
-      } else if (lastFieldSeenRaw === null) {
-        const norm = normalizeRuntimeTimestamp(val);
-        if (norm > 0) state.lastFieldUpdate = norm;
-      }
-      lastFieldSeenRaw = val;
+      state.lastFieldUpdate = normalizeRuntimeTimestamp(s.val());
       updateHeartbeatUI();
     });
-    let lastHomeSeenRaw = null;
     if (dbRefs.homeLastSeen) dbRefs.homeLastSeen.on('value', s => {
       state.homeHeartbeatLoaded = true;
-      const val = s.val();
-      if (val !== lastHomeSeenRaw && lastHomeSeenRaw !== null) {
-        state.lastHomeUpdate = serverNow();
-      } else if (lastHomeSeenRaw === null) {
-        const norm = normalizeRuntimeTimestamp(val);
-        if (norm > 0) state.lastHomeUpdate = norm;
-      }
-      lastHomeSeenRaw = val;
+      state.lastHomeUpdate = normalizeRuntimeTimestamp(s.val());
       updateHeartbeatUI();
     });
     ['statusHomeEsp32', 'statusFieldEsp32', 'statusFieldLora', 'statusHomeWifi'].forEach(k => { const dk = k.replace('status', '').replace(/([A-Z])/g, '_$1').toLowerCase().slice(1); if (dbRefs[k]) dbRefs[k].on('value', s => { state.deviceStatus[dk] = s.val() || 'offline'; updateDeviceStatusUI(); }); });
@@ -624,6 +612,7 @@ function isPhaseAvailableValue(value) {
 
   function updateSignalLostLockout() {
     if (state.loraLost) {
+      updateMotorUI();
       dom.signalLostOverlay.classList.add('visible');
       const motorIsOn = (state.motorCommand === 'ON' || state.motorCommand === 'START' || state.motorActual === 'ON');
       dom.motorBtn.disabled = !motorIsOn;

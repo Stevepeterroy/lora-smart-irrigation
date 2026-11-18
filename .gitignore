@@ -36,4 +36,8 @@ exports/
 *.tsbuildinfo
 android/app/src/main/assets/public/
 firebase-config.local.js
-firebase-config.local.js
+
+android/capacitor-cordova-android-plugins/
+
+**/android/app/src/main/assets/public/
+**/android/capacitor-cordova-android-plugins/

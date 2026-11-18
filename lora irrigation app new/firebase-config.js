@@ -3,7 +3,9 @@
 // ============================================
 
 const firebaseConfig = window.IRRIGATION_FIREBASE_CONFIG;
-if (!firebaseConfig) throw new Error("Configure firebase-config.local.js before starting the app.");
+if (!firebaseConfig) {
+  throw new Error("Create firebase-config.local.js from the example, or configure the Netlify build environment.");
+}
 
 firebase.initializeApp(firebaseConfig);
 const database = firebase.database();

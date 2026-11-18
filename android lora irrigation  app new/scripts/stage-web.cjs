@@ -1,0 +1,11 @@
+'use strict';
+const fs = require('node:fs');
+const path = require('node:path');
+const root = path.resolve(__dirname, '..');
+const files = ['index.html', 'app.js', 'styles.css', 'runtime.js', 'chart.js', 'i18n.js', 'manifest.json', 'firebase-config.js', 'firebase-config.local.js'];
+for (const file of files) if (!fs.existsSync(path.join(root, file))) throw new Error('Missing ' + file + '; follow README setup before packaging.');
+const output = path.join(root, 'www');
+fs.mkdirSync(output, { recursive: true });
+for (const file of files) fs.copyFileSync(path.join(root, file), path.join(output, file));
+fs.cpSync(path.join(root, 'vendor'), path.join(output, 'vendor'), { recursive: true });
+console.log('Staged web assets into www.');
